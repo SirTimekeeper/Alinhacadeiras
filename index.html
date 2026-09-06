@@ -10,6 +10,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/src/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js" defer></script>
     <script type="module" src="/src/main.js"></script>
   </head>
   <body>
@@ -59,6 +61,7 @@
             </span>
             <div><strong id="statusTitle">Pronto para analisar</strong><small id="statusDescription">Abra a câmera ou envie uma foto</small></div>
           </div>
+          <div class="detection-summary" id="detectionSummary" hidden></div>
         </div>
 
         <div class="control-panel">
@@ -72,6 +75,7 @@
               Limpar
             </button>
           </div>
+          <div class="model-state" id="modelState"><i></i><span><b>Detector local</b><small>Será carregado ao iniciar a câmera</small></span></div>
           <label class="slider-row">
             <span><b>Sensibilidade</b><small>Tolerância do modelo ao desalinhamento</small></span>
             <span class="range-wrap"><input type="range" id="spacing" min="35" max="95" value="62" /><output id="spacingValue">62</output></span>
@@ -92,7 +96,7 @@
       <section class="actions">
         <button class="analyze-action" id="analyzeImage">
           <span class="ai-spark" aria-hidden="true">✦</span>
-          <span><strong>Analisar alinhamento</strong><small>Identificar cadeiras com visão computacional</small></span>
+          <span><strong>Analisar agora</strong><small>Detectar cadeiras e comparar as fileiras</small></span>
           <span class="scan-icon" aria-hidden="true"></span>
         </button>
         <button class="primary-action" id="startCamera">
@@ -114,7 +118,7 @@
       <button class="dialog-close" aria-label="Fechar">×</button>
       <span class="eyebrow">COMO FUNCIONA</span>
       <h2>Alinhe em três passos</h2>
-      <ol><li><b>Abra a câmera</b><span>Posicione-se de frente para as fileiras.</span></li><li><b>Inicie a análise</b><span>O modelo procura padrões, contornos e perspectiva.</span></li><li><b>Siga as cores</b><span>Verde está alinhado, amarelo pede atenção e vermelho precisa ser movido.</span></li></ol>
+      <ol><li><b>Abra a câmera</b><span>Posicione-se de frente para as fileiras e mantenha as cadeiras inteiras no quadro.</span></li><li><b>Aguarde a detecção</b><span>O detector roda continuamente no seu navegador, sem precisar de uma LLM.</span></li><li><b>Siga as cores</b><span>Verde está alinhado, amarelo pede atenção e vermelho precisa ser movido.</span></li></ol>
     </dialog>
     <div class="toast" id="toast" role="status"></div>
   </body>

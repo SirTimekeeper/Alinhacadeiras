@@ -10,6 +10,9 @@ let stream;
 let facingMode = 'environment';
 let guideState = { primary: true, secondary: true };
 let analysis = null;
+let detector = null;
+let detectionLoop = null;
+let detecting = false;
 
 function buildChairs() {
   const positions = [
@@ -73,56 +76,88 @@ function drawGuides() {
 
 function drawAnalysis(w, h) {
   const alpha = Number(opacity.value) / 100;
-  const horizon = h * .39;
   ctx.lineCap = 'round';
-  analysis.lines.forEach((line, index) => {
-    if ((line.level === 'green' && !guideState.primary) || (line.level !== 'green' && !guideState.secondary)) return;
-    const color = line.level === 'green' ? '#36d399' : line.level === 'yellow' ? '#facc15' : '#fb5a62';
-    const x = w * line.x;
-    ctx.shadowColor = color; ctx.shadowBlur = 12;
-    ctx.strokeStyle = color; ctx.globalAlpha = alpha; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(w * .5 + (x - w * .5) * .18, horizon); ctx.lineTo(x, h * .94); ctx.stroke();
-    ctx.shadowBlur = 0; ctx.fillStyle = color; ctx.globalAlpha = 1;
-    ctx.beginPath(); ctx.arc(x, h * .9, 12, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#10241f'; ctx.font = '800 10px DM Sans'; ctx.textAlign = 'center'; ctx.fillText(index + 1, x, h * .9 + 3.5);
+  analysis.chairs.forEach((chair, index) => {
+    if ((chair.level === 'green' && !guideState.primary) || (chair.level !== 'green' && !guideState.secondary)) return;
+    const color = chair.level === 'green' ? '#36d399' : chair.level === 'yellow' ? '#facc15' : '#fb5a62';
+    const { x, y, width, height } = chair.displayBox;
+    ctx.shadowColor = color; ctx.shadowBlur = 10; ctx.strokeStyle = color; ctx.globalAlpha = alpha; ctx.lineWidth = 3;
+    ctx.strokeRect(x, y, width, height); ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.fillStyle = color;
+    const label = chair.level === 'green' ? `Cadeira ${index + 1}` : chair.level === 'yellow' ? 'Verificar' : 'Desalinhada';
+    ctx.font = '700 11px DM Sans'; const labelWidth = ctx.measureText(label).width + 14;
+    ctx.fillRect(x, Math.max(0, y - 23), labelWidth, 23); ctx.fillStyle = '#10241f'; ctx.textAlign = 'left'; ctx.fillText(label, x + 7, Math.max(15, y - 7));
   });
   ctx.globalAlpha = 1;
 }
 
-function sourcePixels() {
-  const source = uploadedImage.style.display === 'block' ? uploadedImage : camera.style.display === 'block' ? camera : demoRoom;
-  const sample = document.createElement('canvas'); sample.width = 240; sample.height = 160;
-  const sampleCtx = sample.getContext('2d', { willReadFrequently: true });
-  try { sampleCtx.drawImage(source, 0, 0, sample.width, sample.height); return sampleCtx.getImageData(0, 0, sample.width, sample.height); } catch { return null; }
+function setModelState(state, title, detail) {
+  const element = $('#modelState'); element.className = `model-state ${state}`;
+  element.querySelector('b').textContent = title; element.querySelector('small').textContent = detail;
 }
 
-function analyzeAlignment() {
-  const pixels = sourcePixels();
-  const scores = [];
-  if (!pixels && demoRoom.style.display !== 'none') scores.push(110, 105, 114, 175, 62);
-  else if (!pixels) return showToast('Abra a câmera ou escolha uma foto antes de analisar.');
-  for (let band = scores.length; band < 5; band++) {
-    let energy = 0; const startX = 12 + band * 44;
-    for (let y = 64; y < 150; y += 3) for (let x = startX; x < startX + 36; x += 3) {
-      const i = (y * pixels.width + x) * 4; const j = i + 12;
-      energy += Math.abs(pixels.data[i] - pixels.data[j]) + Math.abs(pixels.data[i + 1] - pixels.data[j + 1]);
-    }
-    scores.push(energy);
-  }
-  const average = scores.reduce((sum, value) => sum + value, 0) / scores.length || 1;
-  const tolerance = (100 - Number(spacing.value)) / 100;
-  const lines = scores.map((score, index) => {
-    const deviation = Math.abs(score - average) / average;
-    return { x: .13 + index * .185, level: deviation < .16 + tolerance * .12 ? 'green' : deviation < .38 + tolerance * .18 ? 'yellow' : 'red' };
+async function loadDetector() {
+  if (detector) return detector;
+  if (!window.cocoSsd) throw new Error('Biblioteca de visão computacional indisponível');
+  setModelState('loading', 'Carregando detector…', 'Primeira execução pode levar alguns segundos');
+  detector = await window.cocoSsd.load({ base: 'lite_mobilenet_v2' });
+  setModelState('ready', 'Detector pronto', 'Análise local e contínua ativada');
+  return detector;
+}
+
+function mapBoxToCanvas(box, source) {
+  const sourceWidth = source.videoWidth || source.naturalWidth;
+  const sourceHeight = source.videoHeight || source.naturalHeight;
+  const scale = Math.max(canvas.clientWidth / sourceWidth, canvas.clientHeight / sourceHeight);
+  const offsetX = (canvas.clientWidth - sourceWidth * scale) / 2;
+  const offsetY = (canvas.clientHeight - sourceHeight * scale) / 2;
+  return { x: box[0] * scale + offsetX, y: box[1] * scale + offsetY, width: box[2] * scale, height: box[3] * scale };
+}
+
+function classifyAlignment(predictions, source) {
+  const chairs = predictions.filter(item => item.class === 'chair' && item.score >= .45).map(item => {
+    const [x, y, width, height] = item.bbox;
+    return { ...item, centerX: x + width / 2, footY: y + height, displayBox: mapBoxToCanvas(item.bbox, source) };
+  }).sort((a, b) => a.centerX - b.centerX);
+  if (chairs.length < 2) return chairs.map(chair => ({ ...chair, level: 'yellow' }));
+  const first = chairs[0]; const last = chairs.at(-1);
+  const slope = (last.footY - first.footY) / Math.max(1, last.centerX - first.centerX);
+  const expectedY = chair => first.footY + slope * (chair.centerX - first.centerX);
+  const typicalHeight = chairs.map(chair => chair.bbox[3]).sort((a, b) => a - b)[Math.floor(chairs.length / 2)];
+  const sensitivity = Number(spacing.value) / 100;
+  const greenLimit = typicalHeight * (.18 - sensitivity * .1);
+  return chairs.map(chair => {
+    const deviation = Math.abs(chair.footY - expectedY(chair));
+    return { ...chair, level: deviation <= greenLimit ? 'green' : deviation <= greenLimit * 2.1 ? 'yellow' : 'red' };
   });
-  if (!lines.some(line => line.level !== 'green')) lines[3].level = 'yellow';
-  analysis = { lines };
-  const ok = lines.filter(line => line.level === 'green').length;
-  const alert = lines.filter(line => line.level === 'red').length;
-  const status = $('#alignmentStatus'); status.className = `alignment-status ${alert ? 'danger' : ok === lines.length ? 'success' : 'attention'}`;
-  $('#statusTitle').textContent = alert ? 'Ajustes necessários' : ok === lines.length ? 'Fileira alinhada' : 'Quase alinhado';
-  $('#statusDescription').textContent = `${ok} de ${lines.length} posições estão alinhadas`;
-  drawGuides(); showToast('Análise concluída. Confira as marcações coloridas.');
+}
+
+async function analyzeAlignment({ quiet = false } = {}) {
+  const source = uploadedImage.style.display === 'block' ? uploadedImage : camera.style.display === 'block' ? camera : null;
+  if (!source) return showToast('Abra a câmera ou escolha uma foto antes de analisar.');
+  if (detecting) return;
+  detecting = true;
+  try {
+    const model = await loadDetector();
+    const chairs = classifyAlignment(await model.detect(source, 20, .35), source);
+    analysis = { chairs };
+    const ok = chairs.filter(chair => chair.level === 'green').length;
+    const alert = chairs.filter(chair => chair.level === 'red').length;
+    const summary = $('#detectionSummary'); summary.hidden = false; summary.textContent = `${chairs.length} cadeira${chairs.length === 1 ? '' : 's'} detectada${chairs.length === 1 ? '' : 's'}`;
+    const status = $('#alignmentStatus');
+    status.className = `alignment-status ${alert ? 'danger' : chairs.length > 1 && ok === chairs.length ? 'success' : 'attention'}`;
+    $('#statusTitle').textContent = !chairs.length ? 'Nenhuma cadeira encontrada' : alert ? 'Ajustes necessários' : chairs.length === 1 ? 'Enquadre mais cadeiras' : ok === chairs.length ? 'Fileira alinhada' : 'Quase alinhado';
+    $('#statusDescription').textContent = !chairs.length ? 'Aproxime-se ou melhore a iluminação' : `${ok} de ${chairs.length} cadeiras estão alinhadas`;
+    drawGuides(); if (!quiet) showToast('Análise concluída. Confira as caixas coloridas.');
+  } catch (error) {
+    setModelState('error', 'Detector indisponível', 'Verifique sua conexão e tente novamente');
+    if (!quiet) showToast(error.message || 'Não foi possível carregar o detector.');
+  } finally { detecting = false; }
+}
+
+function startLiveDetection() {
+  clearInterval(detectionLoop);
+  analyzeAlignment({ quiet: true });
+  detectionLoop = setInterval(() => analyzeAlignment({ quiet: true }), 900);
 }
 
 function updateRange(input, output, suffix = '') {
@@ -142,7 +177,7 @@ async function openCamera() {
     camera.style.display = 'block'; uploadedImage.style.display = 'none'; demoRoom.style.display = 'none';
     $('#sourceLabel').textContent = 'AO VIVO';
     $('#startCamera strong').textContent = 'Câmera ativa';
-    analysis = null; drawGuides(); showToast('Câmera aberta. Toque em analisar quando estiver pronto.');
+    analysis = null; drawGuides(); startLiveDetection(); showToast('Câmera aberta. Detecção ao vivo iniciada.');
   } catch { showToast('Não foi possível abrir a câmera. Verifique a permissão.'); }
 }
 
@@ -161,7 +196,7 @@ $('#flipCamera').addEventListener('click', () => { facingMode = facingMode === '
 $('#fileInput').addEventListener('change', (event) => {
   const file = event.target.files[0]; if (!file) return;
   if (stream) stream.getTracks().forEach(track => track.stop());
-  uploadedImage.onload = () => analyzeAlignment();
+  clearInterval(detectionLoop); uploadedImage.onload = () => analyzeAlignment();
   uploadedImage.src = URL.createObjectURL(file); uploadedImage.style.display = 'block'; camera.style.display = 'none'; demoRoom.style.display = 'none';
   $('#sourceLabel').textContent = 'FOTO'; analysis = null; drawGuides(); showToast('Foto carregada. Iniciando análise…');
 });
@@ -169,11 +204,11 @@ document.querySelectorAll('.switch').forEach(button => button.addEventListener('
   button.classList.toggle('on'); const active = button.classList.contains('on'); button.setAttribute('aria-pressed', active);
   guideState[button.dataset.guide] = active; drawGuides();
 }));
-$('#analyzeImage').addEventListener('click', analyzeAlignment);
-$('#resetGuides').addEventListener('click', () => { analysis = null; spacing.value = 62; opacity.value = 82; updateRange(spacing, $('#spacingValue')); updateRange(opacity, $('#opacityValue'), '%'); $('#alignmentStatus').className = 'alignment-status waiting'; $('#statusTitle').textContent = 'Pronto para analisar'; $('#statusDescription').textContent = 'Abra a câmera ou envie uma foto'; showToast('Análise limpa.'); });
+$('#analyzeImage').addEventListener('click', () => analyzeAlignment());
+$('#resetGuides').addEventListener('click', () => { analysis = null; spacing.value = 62; opacity.value = 82; updateRange(spacing, $('#spacingValue')); updateRange(opacity, $('#opacityValue'), '%'); $('#detectionSummary').hidden = true; $('#alignmentStatus').className = 'alignment-status waiting'; $('#statusTitle').textContent = 'Pronto para analisar'; $('#statusDescription').textContent = 'Abra a câmera ou envie uma foto'; showToast('Análise limpa.'); });
 const dialog = $('#helpDialog');
 $('#helpButton').addEventListener('click', () => dialog.showModal());
 dialog.querySelector('.dialog-close').addEventListener('click', () => dialog.close());
 dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
 $('#settingsButton').addEventListener('click', () => { $('.control-panel').scrollIntoView({ behavior: 'smooth', block: 'center' }); showToast('Use os controles para personalizar as guias.'); });
-window.addEventListener('beforeunload', () => stream?.getTracks().forEach(track => track.stop()));
+window.addEventListener('beforeunload', () => { clearInterval(detectionLoop); stream?.getTracks().forEach(track => track.stop()); });
