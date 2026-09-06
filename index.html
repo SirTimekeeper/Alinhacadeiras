@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#f8f7f3" />
+    <meta name="description" content="Use a câmera para alinhar fileiras de cadeiras com guias visuais." />
+    <title>Alinha — Cadeiras no lugar</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/style.css" />
+    <script type="module" src="/src/main.js"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Alinha, início">
+          <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span>alinha</span>
+        </a>
+        <div class="top-actions">
+          <button class="icon-btn" id="helpButton" aria-label="Como usar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.4 2.4 0 0 1 4.6 1c0 1.8-2.4 2-2.4 3.6M12 17.2h.01"/></svg>
+          </button>
+          <button class="icon-btn" id="settingsButton" aria-label="Configurações" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.3A3.3 3.3 0 1 0 12 8.7a3.3 3.3 0 0 0 0 6.6Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <section class="intro">
+        <div>
+          <span class="eyebrow">ASSISTENTE VISUAL</span>
+          <h1>Deixe cada cadeira<br />no lugar certo.</h1>
+        </div>
+        <p>Aponte a câmera para as fileiras e use as linhas-guia para encontrar o alinhamento perfeito.</p>
+      </section>
+
+      <section class="workspace" aria-label="Área da câmera">
+        <div class="camera-card" id="cameraCard">
+          <video id="camera" playsinline muted></video>
+          <img id="uploadedImage" alt="Foto das cadeiras para alinhamento" />
+          <div class="demo-room" id="demoRoom" aria-hidden="true">
+            <div class="wall"><span class="window"></span><span class="window right"></span></div>
+            <div class="floor"></div>
+            <div class="chairs" id="chairs"></div>
+          </div>
+          <canvas id="guideCanvas"></canvas>
+          <div class="camera-top">
+            <span class="live-pill"><i></i><span id="sourceLabel">PRÉVIA</span></span>
+            <button class="camera-control" id="flipCamera" aria-label="Trocar câmera">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-14.8-4M4 13a8.1 8.1 0 0 0 14.8 4"/><path d="M5 3v4h4M19 21v-4h-4"/></svg>
+            </button>
+          </div>
+          <div class="alignment-status" id="alignmentStatus">
+            <span class="status-icon">
+              <svg viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"/></svg>
+            </span>
+            <div><strong>Guias posicionadas</strong><small>Mova-se até as pernas seguirem as linhas</small></div>
+          </div>
+        </div>
+
+        <div class="control-panel">
+          <div class="control-heading">
+            <div>
+              <span class="step">AJUSTE AS GUIAS</span>
+              <h2>Linhas de alinhamento</h2>
+            </div>
+            <button class="reset-btn" id="resetGuides" aria-label="Restaurar guias">
+              <svg viewBox="0 0 24 24"><path d="M4 4v5h5M20 20v-5h-5"/><path d="M5.6 15a7 7 0 0 0 11.7 2.5L20 15M4 9l2.7-2.5A7 7 0 0 1 18.4 9"/></svg>
+              Restaurar
+            </button>
+          </div>
+          <label class="slider-row">
+            <span><b>Espaçamento</b><small>Distância entre as fileiras</small></span>
+            <span class="range-wrap"><input type="range" id="spacing" min="35" max="95" value="62" /><output id="spacingValue">62</output></span>
+          </label>
+          <label class="slider-row">
+            <span><b>Opacidade</b><small>Visibilidade das linhas</small></span>
+            <span class="range-wrap"><input type="range" id="opacity" min="20" max="100" value="82" /><output id="opacityValue">82%</output></span>
+          </label>
+          <div class="guide-toggle">
+            <span><i class="line-swatch coral"></i>Linhas principais</span>
+            <button class="switch on" data-guide="primary" aria-label="Alternar linhas principais" aria-pressed="true"><i></i></button>
+            <span><i class="line-swatch mint"></i>Linhas auxiliares</span>
+            <button class="switch on" data-guide="secondary" aria-label="Alternar linhas auxiliares" aria-pressed="true"><i></i></button>
+          </div>
+        </div>
+      </section>
+
+      <section class="actions">
+        <button class="primary-action" id="startCamera">
+          <span class="action-icon"><svg viewBox="0 0 24 24"><path d="M4 7h3l1.5-2h7L17 7h3v12H4Z"/><circle cx="12" cy="13" r="3.5"/></svg></span>
+          <span><strong>Abrir câmera</strong><small>Começar o alinhamento ao vivo</small></span>
+          <svg class="arrow" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+        <label class="secondary-action" for="fileInput">
+          <svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 14v5h14v-5"/></svg>
+          <span><strong>Usar uma foto</strong><small>Escolha da sua galeria</small></span>
+        </label>
+        <input id="fileInput" type="file" accept="image/*" capture="environment" hidden />
+      </section>
+
+      <footer><span>Um ambiente organizado começa por uma boa linha.</span><span class="privacy"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Suas imagens não saem do dispositivo</span></footer>
+    </main>
+
+    <dialog id="helpDialog">
+      <button class="dialog-close" aria-label="Fechar">×</button>
+      <span class="eyebrow">COMO FUNCIONA</span>
+      <h2>Alinhe em três passos</h2>
+      <ol><li><b>Abra a câmera</b><span>Posicione-se de frente para as fileiras.</span></li><li><b>Ajuste as linhas</b><span>Use o espaçamento para encaixar as guias.</span></li><li><b>Confira a perspectiva</b><span>Alinhe pés e encostos às linhas da tela.</span></li></ol>
+    </dialog>
+    <div class="toast" id="toast" role="status"></div>
+  </body>
+</html>
