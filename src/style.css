@@ -46,3 +46,13 @@ dialog{width:min(440px,calc(100% - 32px));border:0;border-radius:22px;padding:34
 @media(max-width:800px){.app-shell{padding:0 18px}.topbar{height:70px}.intro{grid-template-columns:1fr;gap:18px;padding:38px 4px 28px}.intro p{font-size:14px}h1{font-size:44px;letter-spacing:-2.6px}.workspace{grid-template-columns:1fr}.camera-card{min-height:58vh}.control-panel{padding:26px 23px}.guide-toggle{margin-top:8px}.actions{grid-template-columns:1fr}.secondary-action{min-height:67px}footer{gap:20px;line-height:1.5}.privacy{text-align:right}}
 @media(max-width:430px){h1{font-size:39px}.camera-card{min-height:430px}.alignment-status small{max-width:210px}.control-heading h2{font-size:20px}.actions{margin-top:20px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+/* Resultados produzidos pelo analisador local de visão computacional. */
+.alignment-status.attention .status-icon{background:#fff4c4;color:#9a6c00}
+.alignment-status.danger .status-icon{background:#ffe0e2;color:#d73342}
+.alignment-status.success .status-icon{background:#dff4eb;color:#168565}
+.line-swatch.green{background:#36d399}.line-swatch.yellow{background:#facc15}.line-swatch.red{background:#fb5a62;margin-left:5px}
+.actions{grid-template-columns:1.15fr 1fr 1fr;max-width:1040px}
+.analyze-action{min-height:78px;border:0;border-radius:16px;background:var(--ink);color:white;padding:12px 18px;display:flex;align-items:center;text-align:left;cursor:pointer;transition:.2s;box-shadow:0 12px 25px #10241f30}
+.analyze-action:hover{transform:translateY(-2px);background:#20483e}.ai-spark{font-size:25px;color:#7de8c2;margin-right:14px}.analyze-action>span:nth-child(2){display:flex;flex-direction:column}.analyze-action strong{font-size:14px}.analyze-action small{font-size:10px;opacity:.68;margin-top:3px}.scan-icon{margin-left:auto;width:18px;height:18px;border:2px solid #7de8c2;border-left-color:transparent;border-radius:50%}
+@media(max-width:800px){.actions{grid-template-columns:1fr}.analyze-action{order:-1}}
