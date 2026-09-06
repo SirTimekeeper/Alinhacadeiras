@@ -46,34 +46,34 @@
             <div class="floor"></div>
             <div class="chairs" id="chairs"></div>
           </div>
-          <canvas id="guideCanvas"></canvas>
+          <canvas id="guideCanvas" aria-label="Resultado visual da análise de alinhamento"></canvas>
           <div class="camera-top">
             <span class="live-pill"><i></i><span id="sourceLabel">PRÉVIA</span></span>
             <button class="camera-control" id="flipCamera" aria-label="Trocar câmera">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-14.8-4M4 13a8.1 8.1 0 0 0 14.8 4"/><path d="M5 3v4h4M19 21v-4h-4"/></svg>
             </button>
           </div>
-          <div class="alignment-status" id="alignmentStatus">
+          <div class="alignment-status waiting" id="alignmentStatus" aria-live="polite">
             <span class="status-icon">
-              <svg viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"/></svg>
+              <svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="3"/></svg>
             </span>
-            <div><strong>Guias posicionadas</strong><small>Mova-se até as pernas seguirem as linhas</small></div>
+            <div><strong id="statusTitle">Pronto para analisar</strong><small id="statusDescription">Abra a câmera ou envie uma foto</small></div>
           </div>
         </div>
 
         <div class="control-panel">
           <div class="control-heading">
             <div>
-              <span class="step">AJUSTE AS GUIAS</span>
-              <h2>Linhas de alinhamento</h2>
+              <span class="step">VISÃO COMPUTACIONAL</span>
+              <h2>Análise de alinhamento</h2>
             </div>
             <button class="reset-btn" id="resetGuides" aria-label="Restaurar guias">
               <svg viewBox="0 0 24 24"><path d="M4 4v5h5M20 20v-5h-5"/><path d="M5.6 15a7 7 0 0 0 11.7 2.5L20 15M4 9l2.7-2.5A7 7 0 0 1 18.4 9"/></svg>
-              Restaurar
+              Limpar
             </button>
           </div>
           <label class="slider-row">
-            <span><b>Espaçamento</b><small>Distância entre as fileiras</small></span>
+            <span><b>Sensibilidade</b><small>Tolerância do modelo ao desalinhamento</small></span>
             <span class="range-wrap"><input type="range" id="spacing" min="35" max="95" value="62" /><output id="spacingValue">62</output></span>
           </label>
           <label class="slider-row">
@@ -81,15 +81,20 @@
             <span class="range-wrap"><input type="range" id="opacity" min="20" max="100" value="82" /><output id="opacityValue">82%</output></span>
           </label>
           <div class="guide-toggle">
-            <span><i class="line-swatch coral"></i>Linhas principais</span>
+            <span><i class="line-swatch green"></i>Alinhada</span>
             <button class="switch on" data-guide="primary" aria-label="Alternar linhas principais" aria-pressed="true"><i></i></button>
-            <span><i class="line-swatch mint"></i>Linhas auxiliares</span>
+            <span><i class="line-swatch yellow"></i>Atenção <i class="line-swatch red"></i>Desalinhada</span>
             <button class="switch on" data-guide="secondary" aria-label="Alternar linhas auxiliares" aria-pressed="true"><i></i></button>
           </div>
         </div>
       </section>
 
       <section class="actions">
+        <button class="analyze-action" id="analyzeImage">
+          <span class="ai-spark" aria-hidden="true">✦</span>
+          <span><strong>Analisar alinhamento</strong><small>Identificar cadeiras com visão computacional</small></span>
+          <span class="scan-icon" aria-hidden="true"></span>
+        </button>
         <button class="primary-action" id="startCamera">
           <span class="action-icon"><svg viewBox="0 0 24 24"><path d="M4 7h3l1.5-2h7L17 7h3v12H4Z"/><circle cx="12" cy="13" r="3.5"/></svg></span>
           <span><strong>Abrir câmera</strong><small>Começar o alinhamento ao vivo</small></span>
@@ -109,7 +114,7 @@
       <button class="dialog-close" aria-label="Fechar">×</button>
       <span class="eyebrow">COMO FUNCIONA</span>
       <h2>Alinhe em três passos</h2>
-      <ol><li><b>Abra a câmera</b><span>Posicione-se de frente para as fileiras.</span></li><li><b>Ajuste as linhas</b><span>Use o espaçamento para encaixar as guias.</span></li><li><b>Confira a perspectiva</b><span>Alinhe pés e encostos às linhas da tela.</span></li></ol>
+      <ol><li><b>Abra a câmera</b><span>Posicione-se de frente para as fileiras.</span></li><li><b>Inicie a análise</b><span>O modelo procura padrões, contornos e perspectiva.</span></li><li><b>Siga as cores</b><span>Verde está alinhado, amarelo pede atenção e vermelho precisa ser movido.</span></li></ol>
     </dialog>
     <div class="toast" id="toast" role="status"></div>
   </body>
